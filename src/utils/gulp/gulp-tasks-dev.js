@@ -6,6 +6,7 @@ var path = require('path');
 var runSequence = require('run-sequence');
 
 module.exports = function(gulp, options, webpackConfig, dist) {
+  runSequence = runSequence.use(gulp);
 
   gulp.task('dev-preprocess', function(callback) {
     var argv = require('yargs').argv;

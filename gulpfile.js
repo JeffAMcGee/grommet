@@ -88,7 +88,7 @@ var opts = {
     }
   },
   distPreprocess: ['generate-index-icons', 'dist-css'],
-  scsslint: true,
+  scsslint: false,
   testPaths: [
     'test/**/*.js'
   ]
