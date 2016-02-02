@@ -6,6 +6,7 @@ import Legend from './Legend';
 import Intl from '../utils/Intl';
 import KeyboardAccelerators from '../utils/KeyboardAccelerators';
 
+
 const CLASS_ROOT = "chart";
 
 const DEFAULT_WIDTH = 384;
@@ -407,8 +408,39 @@ export default class Chart extends Component {
     return [first, second];
   }
 
-  // Converts the series data into paths for line or area types.
-  _renderLinesOrAreas () {
+  _shapedPoint(cx, cy, index, colorIndex, seriesIndex) {
+    let className = CLASS_ROOT + "__values-point color-index-" + colorIndex;
+    let r = POINT_RADIUS;
+    if (seriesIndex%4===0) {
+      // circle
+      return (
+        <circle key={index} className={className} cx={cx} cy={cy} r={r} />
+      );
+    } else if (seriesIndex%4===1) {
+      // square
+      return (
+        <rect key={index} className={className}
+          x={cx-r} y={cy-r} width={r*2} height={r*2} />
+      );
+    } else if (seriesIndex%4===2) {
+      // diamond
+      let points = `${cx} ${cy-r}, ${cx+r} ${cy}, ${cx} ${cy+r}, ${cx-r} ${cy}`;
+      return (
+        <polygon key={index} className={className} points={points} />
+      );
+    } else if (seriesIndex%4===3) {
+      // equilateral triangle
+      let dx = Math.round(r*Math.sqrt(.75));
+      let dy = Math.round(r/2);
+      let points = `${cx} ${cy-r}, ${cx-dx} ${cy+dy}, ${cx+dx} ${cy+dy}`;
+      return (
+        <polygon key={index} className={className} points={points} />
+      );
+    }
+  }
+
+  // Converts the series data into paths for line, area, or scatter types.
+  _renderCartesian () {
     let bounds = this.state.bounds;
     let values = this.props.series.map(function (item, seriesIndex) {
 
@@ -446,14 +478,11 @@ export default class Chart extends Component {
           }
         }
 
-        if (this.props.points && ! this.props.sparkline) {
+        if ('scatter' === this.props.type ||
+            (this.props.points && ! this.props.sparkline)) {
           let x = Math.max(POINT_RADIUS + 1,
             Math.min(bounds.graphWidth - (POINT_RADIUS + 1), coordinate[0]));
-          points.push(
-            <circle key={index}
-              className={CLASS_ROOT + "__values-point color-index-" + colorIndex}
-              cx={x} cy={coordinate[1]} r={POINT_RADIUS} />
-          );
+          points.push(this._shapedPoint(x, coordinate[1], index, colorIndex, seriesIndex));
         }
 
         previousControlCoordinates = controlCoordinates;
@@ -555,7 +584,8 @@ export default class Chart extends Component {
     let x = this._translateX(value);
     let startX = x;
     let anchor;
-    if ('line' === this.props.type || 'area' === this.props.type) {
+    if ('line' === this.props.type || 'area' === this.props.type ||
+        'scatter' === this.props.type) {
       // Place the text in the middle for line and area type charts.
       anchor = 'middle';
       startX = x - (MIN_LABEL_WIDTH / 2);
@@ -719,7 +749,8 @@ export default class Chart extends Component {
 
       // For bar charts, the band is left aligned with the bars.
       let x = this._translateX(obj.value);
-      if ('line' === this.props.type || 'area' === this.props.type) {
+      if ('line' === this.props.type || 'area' === this.props.type ||
+          'scatter' === this.props.type) {
         // For line and area charts, the band is centered.
         x -= (bounds.xStepWidth / 2);
       }
@@ -773,7 +804,8 @@ export default class Chart extends Component {
     let points;
     if (this.props.points) {
       // for area and line charts, include a dot at the intersection
-      if ('line' === this.props.type || 'area' === this.props.type) {
+      if ('line' === this.props.type || 'area' === this.props.type ||
+         'scatter' === this.props.type) {
         points = this.props.series.map(function (item, seriesIndex) {
           value = item.values[this.state.activeXIndex];
           coordinates = this._coordinates(value);
@@ -850,8 +882,9 @@ export default class Chart extends Component {
     }
 
     let values = [];
-    if ('line' === this.props.type || 'area' === this.props.type) {
-      values = this._renderLinesOrAreas();
+    if ('line' === this.props.type || 'area' === this.props.type ||
+        'scatter' ===this.props.type) {
+      values = this._renderCartesian();
     } else if ('bar' === this.props.type) {
       values = this._renderBars();
     }
@@ -983,7 +1016,7 @@ Chart.propTypes = {
     value: PropTypes.number.isRequired,
     colorIndex: PropTypes.string
   })),
-  type: PropTypes.oneOf(['line', 'bar', 'area']),
+  type: PropTypes.oneOf(['line', 'bar', 'area', 'scatter']),
   units: PropTypes.string,
   xAxis: PropTypes.oneOfType([
     PropTypes.arrayOf(PropTypes.shape({
